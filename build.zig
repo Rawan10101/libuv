@@ -14,13 +14,15 @@ pub fn build(b: *std.Build) void {
 
     const upstream = b.dependency("libuv", .{});
 
+    var root_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
     const lib = b.addLibrary(.{
         .name = "uv",
         .linkage = .static,
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = root_module,
     });
 
     const cflags: []const []const u8 = &.{
@@ -33,34 +35,33 @@ pub fn build(b: *std.Build) void {
     const include_root = upstream.path("include");
     const test_root = upstream.path("test");
 
-    lib.linkLibC();
-    lib.addCSourceFiles(.{
+    root_module.addCSourceFiles(.{
         .root = src_root,
         .files = common_sources,
         .flags = cflags,
     });
-    lib.addIncludePath(src_root);
-    lib.addIncludePath(include_root);
+    root_module.addIncludePath(src_root);
+    root_module.addIncludePath(include_root);
 
     const tinfo = target.result;
     switch (tinfo.os.tag) {
         .windows => {
-            lib.root_module.addCMacro("_WIN32_WINNT", "0x0A00");
-            lib.root_module.addCMacro("WIN32_LEAN_AND_MEAN", "");
-            lib.root_module.addCMacro("_CRT_DECLARE_NONSTDC_NAMES", "0");
+            root_module.addCMacro("_WIN32_WINNT", "0x0A00");
+            root_module.addCMacro("WIN32_LEAN_AND_MEAN", "");
+            root_module.addCMacro("_CRT_DECLARE_NONSTDC_NAMES", "0");
 
-            lib.linkSystemLibrary("psapi");
-            lib.linkSystemLibrary("user32");
-            lib.linkSystemLibrary("advapi32");
-            lib.linkSystemLibrary("iphlpapi");
-            lib.linkSystemLibrary("userenv");
-            lib.linkSystemLibrary("ws2_32");
-            lib.linkSystemLibrary("dbghelp");
-            lib.linkSystemLibrary("ole32");
-            lib.linkSystemLibrary("shell32");
+            root_module.linkSystemLibrary("psapi", .{});
+            root_module.linkSystemLibrary("user32", .{});
+            root_module.linkSystemLibrary("advapi32", .{});
+            root_module.linkSystemLibrary("iphlpapi", .{});
+            root_module.linkSystemLibrary("userenv", .{});
+            root_module.linkSystemLibrary("ws2_32", .{});
+            root_module.linkSystemLibrary("dbghelp", .{});
+            root_module.linkSystemLibrary("ole32", .{});
+            root_module.linkSystemLibrary("shell32", .{});
             if (optimize == .Debug)
-                lib.linkSystemLibrary("ucrtbased");
-            lib.addCSourceFiles(.{
+                root_module.linkSystemLibrary("ucrtbased", .{});
+            root_module.addCSourceFiles(.{
                 .root = src_root,
                 .files = win_sources,
                 .flags = cflags,
@@ -75,9 +76,9 @@ pub fn build(b: *std.Build) void {
             );
         },
         else => {
-            lib.root_module.addCMacro("_FILE_OFFSET_BITS", "64");
-            lib.root_module.addCMacro("_LARGEFILE_SOURCE", "");
-            lib.addCSourceFiles(.{
+            root_module.addCMacro("_FILE_OFFSET_BITS", "64");
+            root_module.addCMacro("_LARGEFILE_SOURCE", "");
+            root_module.addCSourceFiles(.{
                 .root = src_root,
                 .files = unix_sources,
                 .flags = cflags,
@@ -87,12 +88,12 @@ pub fn build(b: *std.Build) void {
                 "uv/unix.h",
             );
             if (!tinfo.abi.isAndroid())
-                lib.linkSystemLibrary("pthread");
+                root_module.linkSystemLibrary("pthread", .{});
 
             if (tinfo.os.tag.isDarwin()) {
-                lib.root_module.addCMacro("_DARWIN_UNLIMITED_SELECT", "1");
-                lib.root_module.addCMacro("_DARWIN_USE_64_BIT_INODE", "1");
-                lib.addCSourceFiles(.{
+                root_module.addCMacro("_DARWIN_UNLIMITED_SELECT", "1");
+                root_module.addCMacro("_DARWIN_USE_64_BIT_INODE", "1");
+                root_module.addCSourceFiles(.{
                     .root = src_root,
                     .files = darwin_sources,
                     .flags = cflags,
@@ -102,9 +103,9 @@ pub fn build(b: *std.Build) void {
                     "uv/darwin.h",
                 );
             } else if (tinfo.abi.isAndroid()) {
-                lib.root_module.addCMacro("_GNU_SOURCE", "");
-                lib.linkSystemLibrary("dl");
-                lib.addCSourceFiles(.{
+                root_module.addCMacro("_GNU_SOURCE", "");
+                root_module.linkSystemLibrary("dl", .{});
+                root_module.addCSourceFiles(.{
                     .root = src_root,
                     .files = android_sources,
                     .flags = cflags,
@@ -115,11 +116,11 @@ pub fn build(b: *std.Build) void {
                 );
             } else switch (tinfo.os.tag) {
                 .linux => {
-                    lib.root_module.addCMacro("_GNU_SOURCE", "");
-                    lib.root_module.addCMacro("_POSIX_C_SOURCE", "200112");
-                    lib.linkSystemLibrary("dl");
-                    lib.linkSystemLibrary("rt");
-                    lib.addCSourceFiles(.{
+                    root_module.addCMacro("_GNU_SOURCE", "");
+                    root_module.addCMacro("_POSIX_C_SOURCE", "200112");
+                    root_module.linkSystemLibrary("dl", .{});
+                    root_module.linkSystemLibrary("rt", .{});
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = linux_sources,
                         .flags = cflags,
@@ -129,28 +130,11 @@ pub fn build(b: *std.Build) void {
                         "uv/linux.h",
                     );
                 },
-                .aix => {
-                    lib.root_module.addCMacro("_ALL_SOURCE", "");
-                    lib.root_module.addCMacro("_LINUX_SOURCE_COMPAT", "");
-                    lib.root_module.addCMacro("_THREAD_SAFE", "");
-                    lib.root_module.addCMacro("_XOPEN_SOURCE", "500");
-                    lib.root_module.addCMacro("HAVE_SYS_AHAFS_EVPRODS_H", "");
-                    lib.linkSystemLibrary("perfstat");
-                    lib.addCSourceFiles(.{
-                        .root = src_root,
-                        .files = aix_sources,
-                        .flags = cflags,
-                    });
-                    lib.installHeader(
-                        include_root.path(b, "uv/aix.h"),
-                        "uv/aix.h",
-                    );
-                },
                 .haiku => {
-                    lib.root_module.addCMacro("_BSD_SOURCE", "");
-                    lib.linkSystemLibrary("bsd");
-                    lib.linkSystemLibrary("network");
-                    lib.addCSourceFiles(.{
+                    root_module.addCMacro("_BSD_SOURCE", "");
+                    root_module.linkSystemLibrary("bsd", .{});
+                    root_module.linkSystemLibrary("network", .{});
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = haiku_sources,
                         .flags = cflags,
@@ -161,11 +145,11 @@ pub fn build(b: *std.Build) void {
                     );
                 },
                 .hurd => {
-                    lib.root_module.addCMacro("_GNU_SOURCE", "");
-                    lib.root_module.addCMacro("_POSIX_C_SOURCE", "200112");
-                    lib.root_module.addCMacro("_XOPEN_SOURCE", "500");
-                    lib.linkSystemLibrary("dl");
-                    lib.addCSourceFiles(.{
+                    root_module.addCMacro("_GNU_SOURCE", "");
+                    root_module.addCMacro("_POSIX_C_SOURCE", "200112");
+                    root_module.addCMacro("_XOPEN_SOURCE", "500");
+                    root_module.linkSystemLibrary("dl", .{});
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = hurd_sources,
                         .flags = cflags,
@@ -176,7 +160,7 @@ pub fn build(b: *std.Build) void {
                     );
                 },
                 .dragonfly => {
-                    lib.addCSourceFiles(.{
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = dragonfly_sources,
                         .flags = cflags,
@@ -187,7 +171,7 @@ pub fn build(b: *std.Build) void {
                     );
                 },
                 .freebsd => {
-                    lib.addCSourceFiles(.{
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = freebsd_sources,
                         .flags = cflags,
@@ -198,8 +182,8 @@ pub fn build(b: *std.Build) void {
                     );
                 },
                 .netbsd => {
-                    lib.linkSystemLibrary("kvm");
-                    lib.addCSourceFiles(.{
+                    root_module.linkSystemLibrary("kvm", .{});
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = netbsd_sources,
                         .flags = cflags,
@@ -210,7 +194,7 @@ pub fn build(b: *std.Build) void {
                     );
                 },
                 .openbsd => {
-                    lib.addCSourceFiles(.{
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = openbsd_sources,
                         .flags = cflags,
@@ -220,15 +204,15 @@ pub fn build(b: *std.Build) void {
                         "uv/bsd.h",
                     );
                 },
-                .illumos, .solaris => {
-                    lib.root_module.addCMacro("__EXTENSIONS__", "");
-                    lib.root_module.addCMacro("_XOPEN_SOURCE", "500");
-                    lib.root_module.addCMacro("_REENTRANT", "");
-                    lib.linkSystemLibrary("kstat");
-                    lib.linkSystemLibrary("nsl");
-                    lib.linkSystemLibrary("sendfile");
-                    lib.linkSystemLibrary("socket");
-                    lib.addCSourceFiles(.{
+                .illumos => {
+                    root_module.addCMacro("__EXTENSIONS__", "");
+                    root_module.addCMacro("_XOPEN_SOURCE", "500");
+                    root_module.addCMacro("_REENTRANT", "");
+                    root_module.linkSystemLibrary("kstat", .{});
+                    root_module.linkSystemLibrary("nsl", .{});
+                    root_module.linkSystemLibrary("sendfile", .{});
+                    root_module.linkSystemLibrary("socket", .{});
+                    root_module.addCSourceFiles(.{
                         .root = src_root,
                         .files = solaris_sources,
                         .flags = cflags,
@@ -238,7 +222,26 @@ pub fn build(b: *std.Build) void {
                         "uv/sunos.h",
                     );
                 },
-                else => @panic("Unsupported build target"),
+                else => {
+                    // aix is removed in zig 0.16
+                    if (@hasDecl(std.Target.Os.Tag, "aix") and tinfo.os.tag == .aix) {
+                        root_module.addCMacro("_ALL_SOURCE", "");
+                        root_module.addCMacro("_LINUX_SOURCE_COMPAT", "");
+                        root_module.addCMacro("_THREAD_SAFE", "");
+                        root_module.addCMacro("_XOPEN_SOURCE", "500");
+                        root_module.addCMacro("HAVE_SYS_AHAFS_EVPRODS_H", "");
+                        root_module.linkSystemLibrary("perfstat", .{});
+                        root_module.addCSourceFiles(.{
+                            .root = src_root,
+                            .files = aix_sources,
+                            .flags = cflags,
+                        });
+                        lib.installHeader(
+                            include_root.path(b, "uv/aix.h"),
+                            "uv/aix.h",
+                        );
+                    } else @panic("Unsupported build target");
+                },
             }
         },
     }
@@ -253,75 +256,77 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(lib);
 
     if (build_tests) {
+        var tests_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        });
         const tests = b.addExecutable(.{
             .name = "uv_run_tests_a",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-            }),
+            .root_module = tests_module,
         });
-        tests.addCSourceFiles(.{
+        tests_module.addCSourceFiles(.{
             .root = test_root,
             .files = test_sources,
             .flags = cflags,
         });
         if (tinfo.os.tag == .windows) {
-            tests.addCSourceFiles(.{
+            tests_module.addCSourceFiles(.{
                 .root = test_root,
                 .files = win_test_sources,
                 .flags = cflags,
             });
-            tests.addCSourceFile(.{
+            tests_module.addCSourceFile(.{
                 .file = src_root.path(b, "win/snprintf.c"),
                 .flags = cflags,
             });
         } else {
-            tests.addCSourceFiles(.{
+            tests_module.addCSourceFiles(.{
                 .root = test_root,
                 .files = unix_test_sources,
                 .flags = cflags,
             });
         }
-        tests.addIncludePath(src_root);
-        tests.addIncludePath(include_root);
-        tests.linkLibrary(lib);
+        tests_module.addIncludePath(src_root);
+        tests_module.addIncludePath(include_root);
+        tests_module.linkLibrary(lib);
         b.installArtifact(tests);
     }
 
     if (build_benchmarks) {
+        var benchmarks_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+        });
         const benchmarks = b.addExecutable(.{
             .name = "uv_run_benchmarks_a",
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-            }),
+            .root_module = benchmarks_module,
         });
 
-        benchmarks.addCSourceFiles(.{
+        benchmarks_module.addCSourceFiles(.{
             .root = test_root,
             .files = benchmark_sources,
             .flags = cflags,
         });
         if (tinfo.os.tag == .windows) {
-            benchmarks.addCSourceFiles(.{
+            benchmarks_module.addCSourceFiles(.{
                 .root = test_root,
                 .files = win_test_sources,
                 .flags = cflags,
             });
-            benchmarks.addCSourceFile(.{
+            benchmarks_module.addCSourceFile(.{
                 .file = src_root.path(b, "win/snprintf.c"),
                 .flags = cflags,
             });
         } else {
-            benchmarks.addCSourceFiles(.{
+            benchmarks_module.addCSourceFiles(.{
                 .root = test_root,
                 .files = unix_test_sources,
                 .flags = cflags,
             });
         }
-        benchmarks.addIncludePath(src_root);
-        benchmarks.addIncludePath(include_root);
-        benchmarks.linkLibrary(lib);
+        benchmarks_module.addIncludePath(src_root);
+        benchmarks_module.addIncludePath(include_root);
+        benchmarks_module.linkLibrary(lib);
         b.installArtifact(benchmarks);
     }
 }
