@@ -12,16 +12,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        zig-version: ["0.14.0"]
-        os: [ubuntu-latest, windows-latest]
+        zig-version: ["0.14.1", "0.15.2", "master"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - zig-version: "0.14.0"
+          - zig-version: "0.15.2"
+            # -Dbuild-tests does not work when targeting Linux because the build
+            # system doesn't preserve linker input file order, which causes the
+            # linker to spew duplicate symbol errors.
+            os: macos-latest
             check-format: true
-            os: macos-latest
             build-options: "-Dbuild-tests -Dbuild-benchmarks"
-
-          - zig-version: "master"
-            os: macos-latest
 
     runs-on: ${{ matrix.os }}
     steps:
