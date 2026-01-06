@@ -597,6 +597,7 @@ const test_sources: []const []const u8 = &.{
     "test-loop-close.c",
     "test-loop-configure.c",
     "test-loop-handles.c",
+    "test-loop-oom.c",
     "test-loop-stop.c",
     "test-loop-time.c",
     "test-metrics.c",
