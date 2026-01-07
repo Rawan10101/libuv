@@ -15,7 +15,7 @@ First, update your `build.zig.zon`:
 ```sh
 # Initialize a zig project if you haven't already
 zig init
-# replace <refname> with the version you want to use, e.g. 1.50.0
+# replace <refname> with the version you want to use, e.g. 1.51.0
 zig fetch --save git+https://github.com/allyourcodebase/libuv.git#<refname>
 ```
 
@@ -35,9 +35,13 @@ your_exe.linkLibrary(libuv_dep.artifact("uv"));
 
 ## Zig Version Support Matrix
 
-|  Refname  | libuv Version  | Compatible Zig Version(s) |
-|-----------|----------------|---------------------------|
-| `v1.50.0` | `1.50.0`       | `0.14.0`, `0.15.0-dev`    |
-|  `main`   | `1.51.0`       | `0.14.0`, `0.15.0-dev`    |
+> [!IMPORTANT]
+> Compatible zig versions labeled `-dev` are maintained on a best-effort basis and are likely to break as the compiler and zig build system develop. Tag-based refs are immutable and will not be updated when the zig build system has a backward incompatible change.
+
+|  Refname  | libuv Version  | Compatible Zig Version(s)      |
+|-----------|----------------|--------------------------------|
+| `master`  | `1.51.0`       | `0.14.1`, `0.15.2`, `0.16-dev` |
+| `v1.51.0` | `1.51.0`       | `0.14.1`, `0.15.2`, `0.16-dev` |
+| `v1.50.0` | `1.50.0`       | `0.14.1`, `0.15.2`             |
 
 [libuv]: https://github.com/libuv
