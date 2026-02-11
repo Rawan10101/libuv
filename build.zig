@@ -720,6 +720,7 @@ const test_sources: []const []const u8 = &.{
     "test-udp-send-unreachable.c",
     "test-udp-try-send.c",
     "test-udp-recv-in-a-row.c",
+    "test-udp-recvmsg-unreachable-error.c",
     "test-udp-reuseport.c",
     "test-uname.c",
     "test-walk-handles.c",
