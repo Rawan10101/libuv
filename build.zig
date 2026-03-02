@@ -130,6 +130,18 @@ pub fn build(b: *std.Build) void {
                         "uv/linux.h",
                     );
                 },
+                .emscripten => {
+                    root_module.addCMacro("UV_PLATFORM_LOOP_FIELDS", "struct pollfd* poll_fds; size_t poll_fds_used; size_t poll_fds_size; unsigned char poll_fds_iterating;");
+                    root_module.addCSourceFiles(.{
+                        .root = src_root,
+                        .files = emscripten_sources,
+                        .flags = cflags,
+                    });
+                    lib.installHeader(
+                        include_root.path(b, "uv/posix.h"),
+                        "uv/posix.h",
+                    );
+                },
                 .haiku => {
                     root_module.addCMacro("_BSD_SOURCE", "");
                     root_module.linkSystemLibrary("bsd", .{});
@@ -438,6 +450,13 @@ const openbsd_sources: []const []const u8 = &.{
 const solaris_sources: []const []const u8 = &.{
     "unix/no-proctitle.c",
     "unix/sunos.c",
+};
+
+const emscripten_sources: []const []const u8 = &.{
+    "unix/no-fsevents.c",
+    "unix/no-proctitle.c",
+    "unix/posix-hrtime.c",
+    "unix/posix-poll.c",
 };
 
 const haiku_sources: []const []const u8 = &.{
