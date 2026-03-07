@@ -737,6 +737,7 @@ const test_sources: []const []const u8 = &.{
     "test-udp-send-immediate.c",
     "test-udp-sendmmsg-error.c",
     "test-udp-send-unreachable.c",
+    "test-udp-recv-cb-close-pollerr.c",
     "test-udp-try-send.c",
     "test-udp-recv-in-a-row.c",
     "test-udp-recvmsg-unreachable-error.c",
